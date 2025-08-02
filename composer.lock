@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "85c1d2065f70e38b0d6bf66559fb13c5",
+    "content-hash": "78d24d15dedd32ad7338f2a56457a05a",
     "packages": [
         {
             "name": "brick/math",
@@ -509,6 +509,115 @@
                 }
             ],
             "time": "2025-03-06T22:45:56+00:00"
+        },
+        {
+            "name": "frankyso/ipaymu",
+            "version": "1.0.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/frankyso/iPaymu.git",
+                "reference": "86dcf204d632c0cda2a1eccc876fbb038202a1f9"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/frankyso/iPaymu/zipball/86dcf204d632c0cda2a1eccc876fbb038202a1f9",
+                "reference": "86dcf204d632c0cda2a1eccc876fbb038202a1f9",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "php": ">=5.3.0"
+            },
+            "require-dev": {
+                "fzaninotto/faker": "^1.9@dev",
+                "mockery/mockery": "^1.2.3",
+                "phpunit/phpunit": "^8.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "frankyso\\iPaymu\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Franky So",
+                    "email": "frankyso.mail@gmail.com"
+                }
+            ],
+            "description": "iPaymu PHP Package",
+            "support": {
+                "issues": "https://github.com/frankyso/iPaymu/issues",
+                "source": "https://github.com/frankyso/iPaymu/tree/1.0.3"
+            },
+            "time": "2019-11-25T08:17:29+00:00"
+        },
+        {
+            "name": "frankyso/laravel-ipaymu",
+            "version": "v1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/frankyso/laravel-iPaymu.git",
+                "reference": "c2f9bfdbc8610ba3d200045830492398a93375b7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/frankyso/laravel-iPaymu/zipball/c2f9bfdbc8610ba3d200045830492398a93375b7",
+                "reference": "c2f9bfdbc8610ba3d200045830492398a93375b7",
+                "shasum": ""
+            },
+            "require": {
+                "frankyso/ipaymu": "^1.0.3",
+                "php": ">=7.2.0"
+            },
+            "require-dev": {
+                "fzaninotto/faker": "^1.9@dev",
+                "mockery/mockery": "^1.2.3",
+                "orchestra/testbench": "^4.0",
+                "phpunit/phpunit": "^8.3"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Debugbar": "frankyso\\iPaymu\\Laravel\\iPaymuFacade"
+                    },
+                    "providers": [
+                        "frankyso\\iPaymu\\Laravel\\iPaymuServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "frankyso\\iPaymu\\Laravel\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Franky So",
+                    "email": "frankyso.mail@gmail.com"
+                }
+            ],
+            "description": "iPaymu-PHP wrapper for Laravel",
+            "keywords": [
+                "ipaymu",
+                "laravel",
+                "library",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/frankyso/laravel-iPaymu/issues",
+                "source": "https://github.com/frankyso/laravel-iPaymu/tree/master"
+            },
+            "time": "2019-11-25T13:20:21+00:00"
         },
         {
             "name": "fruitcake/php-cors",

@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // config/services.php
+'ipaymu' => [
+    'va' => env('IPAYMU_VA_NUMBER'),
+    'key' => env('IPAYMU_API_KEY'),
+    'url' => env('IPAYMU_URL', 'https://sandbox.ipaymu.com/api/v2/payment/qris'),
+],
 ];
