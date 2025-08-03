@@ -3,6 +3,7 @@
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\EventFormController;
 use App\Http\Controllers\EventTicketController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
 Route::resource('event', EventController::class); 
@@ -16,3 +17,5 @@ Route::get('event/{eventId}/ticket', [EventTicketController::class, 'getTickets'
 Route::get('eventForm/{id}', [EventFormController::class, 'index']);
 Route::post('eventForm/store', [EventFormController::class, 'store']);
 
+//transaction
+Route::post('transaction', [TransactionController::class, 'process']);
