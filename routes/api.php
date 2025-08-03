@@ -4,7 +4,10 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\EventFormController;
 use App\Http\Controllers\EventTicketController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
+use App\Mail\SuccessPaymentMail;
+use Illuminate\Support\Facades\Mail;
 
 Route::resource('event', EventController::class); 
 Route::post('event/{id}', [EventController::class, 'update']);
@@ -19,3 +22,10 @@ Route::post('eventForm/store', [EventFormController::class, 'store']);
 
 //transaction
 Route::post('transaction', [TransactionController::class, 'process']);
+Route::post('/payment/create-qris', [PaymentController::class, 'create']);
+Route::post('/api/payment/notify', [PaymentController::class, 'notify']);
+Route::get('/payment/success', [PaymentController::class, 'success']);
+Route::get('/payment/cancel', [PaymentController::class, 'cancel']);
+
+
+Route::get('/mail', [PaymentController::class, 'sendPaymentSuccess']);
