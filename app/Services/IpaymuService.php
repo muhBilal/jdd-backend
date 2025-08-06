@@ -17,7 +17,7 @@ class IpaymuService
         $this->url    = env('IPAYMU_URL');
     }
 
-    public function createDirectPayment($amount, $name, $phone, $email)
+    public function createDirectPayment($amount, $name, $phone, $email , $referenceId)
     {
         $endpoint = '/payment/direct';
         $fullUrl  = rtrim($this->url, '/') . $endpoint;
@@ -28,7 +28,8 @@ class IpaymuService
             'email'         => trim($email),
             'amount'        => floatval($amount),
             'notifyUrl'     => url('/api/payment/notify'),
-            'referenceId'   => uniqid('order_'),
+            // 'referenceId'   => uniqid('order_'),
+            'referenceId'   => $referenceId,
             'paymentMethod' => 'qris',
             'paymentChannel'=> 'bca',  
         ];

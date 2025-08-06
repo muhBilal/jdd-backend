@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\IpaymuService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,14 +12,23 @@ use Illuminate\Support\Str;
 
 class TransactionController extends Controller
 {
+    protected $ipaymu;
+
+    public function __construct(IpaymuService $ipaymu)
+    {
+        $this->ipaymu = $ipaymu;
+    }
+
     public function process(Request $request)
     {
         try {
             $name = $request->name;
             $email = $request->email;
+            $phone = $request->phone;
             $eventTicketId = $request->eventTicketId;
             $amount = (int) $request->amount;
             $tickets = $request->tickets;
+            $qty = $request->qty;
 
             if (!is_array($tickets) || empty($tickets)) {
                 return response()->json([
@@ -26,7 +36,6 @@ class TransactionController extends Controller
                 ], 400);
             }
 
-            // Pastikan event_ticket ada
             $eventTicket = DB::table('event_tickets')->where('id', $eventTicketId)->first();
             if (!$eventTicket) {
                 return response()->json([
@@ -34,7 +43,6 @@ class TransactionController extends Controller
                 ], 404);
             }
 
-            // Pastikan event ada
             $event = DB::table('events')->where('id', $eventTicket->event_id)->first();
             if (!$event) {
                 return response()->json([
@@ -43,8 +51,6 @@ class TransactionController extends Controller
             }
 
             DB::beginTransaction();
-
-            // Cari / buat user
             $user = DB::table('users')->where('email', $email)->first();
             if (!$user) {
                 $userId = Str::uuid()->toString();
@@ -59,21 +65,36 @@ class TransactionController extends Controller
             }
 
             $insertedTicketIds = [];
-
-            // Buat transaksi dulu → ambil ID-nya
+            $price = $eventTicket->price * $qty + ($eventTicket->price * $qty * 0.07);
             $transactionId = Str::uuid()->toString();
+            $payment = $this->ipaymu->createDirectPayment(
+                $price,
+                $name,
+                $phone,
+                $email,
+                $transactionId
+            );
+
+            if ($payment['Status'] === 'success') {
+                return response()->json([
+                    'message' => 'Payment failed',
+                    'error'   => $payment['Message']
+                ], 500);
+            }
+
+            $data = $payment['Data'];
             DB::table('transactions')->insert([
                 'id'       => $transactionId,
                 'event_id' => $event->id,
                 'user_id'  => $user->id,
-                'amount'   => $amount,
+                'amount' => $price,
+                'payment_url' => $data['QrImage'],
+                'payment_reference' => $data['ReferenceId'],
+                'payment_expired_at' => $data['Expired'],
             ]);
 
-            // Buat tiket sesuai jumlah amount
-            for ($i = 0; $i < $amount; $i++) {
+            for ($i = 0; $i < $qty; $i++) {
                 $ticketId = Str::uuid()->toString();
-
-                // Insert tiket
                 DB::table('tickets')->insert([
                     'id' => $ticketId,
                     'name' => $name,
@@ -82,16 +103,11 @@ class TransactionController extends Controller
                     'event_ticket_id' => $eventTicketId,
                 ]);
 
-                // Hubungkan tiket dengan user
                 DB::table('ticket_users')->insert([
                     'ticket_id' => $ticketId,
                     'user_id'   => $user->id,
                 ]);
 
-                // Hubungkan tiket dengan transaksi
-
-
-                // Insert data form untuk tiket ini
                 foreach ($tickets as $t) {
                     DB::table('event_form_tickets')->insert([
                         'event_form_id' => $t['eventFormId'],
@@ -101,22 +117,24 @@ class TransactionController extends Controller
                 }
 
                 $insertedTicketIds[] = $ticketId;
+
+                DB::table('transaction_tickets')->insert([
+                    'transaction_id' => $transactionId,
+                    'ticket_id'      => $ticketId,
+                    'quantity'       => 1,
+                    'price_at_purchase' => $eventTicket->price,
+                ]);
             }
 
-            DB::table('transaction_tickets')->insert([
-                'transaction_id' => $transactionId,
-                'ticket_id'      => $ticketId,
-                'quantity'      => $amount,
-                'price_at_purchase' => $eventTicket->price * $amount,
-            ]);
-
+            DB::table('event_tickets')
+                ->where('id', $eventTicketId)
+                ->decrement('quota', $qty);
             DB::commit();
-
             return response()->json([
                 'message' => 'Transaction processed successfully',
                 'transaction_id' => $transactionId,
                 'ticket_ids' => $insertedTicketIds,
-                'data' => $request->all()
+                'data' => $request->all(),
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -127,60 +145,5 @@ class TransactionController extends Controller
         }
     }
 
-    public function handleTransaction(Request $request)
-    {
-        $validatedData = $request->validate([
-            'amount' => 'required|numeric|min:0',
-            'currency' => 'required|string|max:3',
-            'description' => 'nullable|string|max:255',
-        ]);
 
-        try {
-            return response()->json([
-                'message' => 'Transaction processed successfully',
-                'data' => $validatedData
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Transaction failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function initiatePayment(Request $request, $transactionId)
-    {
-        $transaction = DB::table('transactions')->where('id', $transactionId)->first();
-        $response = Http::post('https://sandbox.ipaymu.com/api/payment', [
-            'api_key' => env('IPAYMU_API_KEY'),
-            'amount' => $transaction->amount,
-            'invoice' => $transaction->id,
-            'name' => $transaction->user->full_name,
-            'email' => $transaction->user->email,
-        ]);
-
-        $paymentUrl = $response->json()['payment_url'];
-
-        $transaction->payment_url = $paymentUrl;
-        $transaction->save();
-
-        return redirect()->away($paymentUrl);
-    }
-
-    public function paymentCallback(Request $request)
-    {
-        $paymentData = $request->all();
-
-        $transaction = DB::table('transactions')->where('id', $paymentData['invoice'])->first();
-        if ($paymentData['status'] == 'success') {
-            $transaction->status = 'paid';
-            $transaction->payment_reference = $paymentData['payment_reference'];
-            $transaction->save();
-            // SendEmailNotification::dispatch($transaction->user, $transaction);
-
-            return response()->json(['status' => 'success']);
-        }
-
-        return response()->json(['status' => 'failed']);
-    }
 }
