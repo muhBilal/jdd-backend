@@ -7,4 +7,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::post('/payment/callback', [TransactionController::class, 'paymentCallback']);
+// Route::post('/payment/callback', [TransactionController::class, 'paymentCallback']);

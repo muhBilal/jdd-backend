@@ -20,7 +20,6 @@ Route::post('eventForm/store', [EventFormController::class, 'store']);
 
 //transaction
 Route::post('transaction', [PaymentController::class, 'process']);
-// Route::post('/payment/create-qris', [PaymentController::class, 'create']);
 Route::post('/payment/notify', [PaymentController::class, 'notify']);
 Route::get('/payment/success', [PaymentController::class, 'success']);
 Route::get('/payment/cancel', [PaymentController::class, 'cancel']);
