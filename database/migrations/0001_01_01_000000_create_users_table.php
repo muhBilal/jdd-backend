@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,15 +12,28 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Create auth_provider enum type
+        DB::statement("CREATE TYPE auth_provider AS ENUM ('google', 'email')");
+
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
+            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->rememberToken();
+            $table->string('password_hash')->nullable();
+            $table->string('full_name')->nullable();
+            $table->string('auth_provider')->default('email');
+            $table->string('google_id')->nullable();
+            $table->boolean('is_email_verified')->default(false);
+            $table->string('email_verification_token')->nullable();
+            $table->timestamp('email_verification_expires_at')->nullable();
+            $table->string('password_reset_token')->nullable();
+            $table->timestamp('password_reset_expires_at')->nullable();
             $table->timestamps();
+
+            // Add index on email for faster lookups
+            $table->index('email');
         });
+
+        DB::statement("ALTER TABLE users ADD CONSTRAINT auth_provider_check CHECK (auth_provider IN ('google', 'email'))");
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
@@ -45,5 +59,8 @@ return new class extends Migration
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+
+        // Drop the enum type
+        DB::statement("DROP TYPE IF EXISTS auth_provider");
     }
 };
