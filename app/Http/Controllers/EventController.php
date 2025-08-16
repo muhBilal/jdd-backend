@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -14,30 +13,50 @@ class EventController extends Controller
     public function index(Request $request)
     {
         try {
-            $perPage = $request->query('per_page', 10);
+            // Add request validation for this query
+            $validator = Validator::make($request->all(), [
+                'limit' => 'integer|min:1',
+                'page' => 'integer|min:1',
+                'search' => 'string|max:255',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $limit = $request->query('limit', 10);
             $page = $request->query('page', 1);
             $search = $request->query('search');
-            $query = DB::table('events');
-            if ($search) {
-                $query->where('title', 'like', '%' . $search . '%');
-            }
-            $events = $query->paginate($perPage, ['*'], 'page', $page);
 
-            $events->getCollection()->transform(function ($event) {
-                $event->images = $event->images ? json_decode($event->images, true) : [];
-                return $event;
-            });
+            $events = DB::table('events')
+                ->select('*')
+                ->orderBy('start_date', 'desc')
+                ->when($search, function ($query, $search) {
+                    return $query->where('title', 'like', '%' . $search . '%');
+                })
+                ->paginate($limit, ['*'], 'page', $page);
+
+
+            $eventData = $events->toArray();
+            foreach ($eventData['data'] as &$event) {
+                if ($event->images) {
+                    $event->images = json_decode($event->images, true);
+                } else {
+                    $event->images = [];
+                }
+            }
 
             return response()->json([
                 'message' => 'Events retrieved successfully',
-                'data' => $events->items(),
+                'data' => $eventData['data'],
                 'pagination' => [
-                    'total' => $events->total(),
-                    'current_page' => $events->currentPage(),
-                    'per_page' => $events->perPage(),
-                    'last_page' => $events->lastPage(),
-                    'next_page_url' => $events->nextPageUrl(),
-                    'prev_page_url' => $events->previousPageUrl(),
+                    'total' => $eventData['total'],
+                    'per_page' => $eventData['per_page'],
+                    'current_page' => $eventData['current_page'],
+                    'last_page' => $eventData['last_page'],
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -47,7 +66,6 @@ class EventController extends Controller
             ], 500);
         }
     }
-
 
     public function store(Request $request)
     {
@@ -115,6 +133,18 @@ class EventController extends Controller
     {
         try {
             $event = DB::table('events')->where('id', $id)->first();
+            $eventForm = DB::table('event_forms')->where('event_id', $id)->get();
+
+            $eventTicket = DB::table('event_tickets')->where('event_id', $id)
+                ->leftJoin(
+                    DB::raw('(SELECT COUNT(*) as claimed, event_ticket_id FROM tickets GROUP BY event_ticket_id) as quota_ticket'),
+                    'quota_ticket.event_ticket_id',
+                    '=',
+                    'event_tickets.id'
+                )
+                ->select('event_tickets.*', DB::raw('COALESCE(quota_ticket.claimed, 0) as sold'))
+                ->where('event_id', $id)
+                ->get();
 
             if (!$event) {
                 return response()->json([
@@ -127,6 +157,13 @@ class EventController extends Controller
             } else {
                 $event->images = [];
             }
+
+            $event->forms = $eventForm->map(function ($form) {
+                $form->options = json_decode($form->options, true);
+                return $form;
+            });
+
+            $event->tickets = $eventTicket;
 
             return response()->json([
                 'message' => 'Event retrieved successfully',
