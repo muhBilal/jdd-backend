@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+CHANGELOG.md
+*.md
+
+# Development files
+.env.example
+docker-compose.yml
+docker-compose.override.yml
+
+# Node modules and build artifacts
+node_modules
+npm-debug.log
+yarn-error.log
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Laravel specific
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/app/public/*
+bootstrap/cache/*
+
+# Testing
+/tests
+phpunit.xml
+.phpunit.result.cache
+
+# Composer
+vendor/.git
+
+# Temporary files
+*.tmp
+*.temp
