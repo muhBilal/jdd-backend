@@ -67,10 +67,11 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 RUN mkdir -p /var/log/supervisor
 RUN mkdir -p /run/nginx
 
-# Optimize Laravel for production
-RUN php artisan config:cache || true
-RUN php artisan route:cache || true
-RUN php artisan view:cache || true
+# Create entrypoint script
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# DO NOT cache config during build - it will be done at runtime with proper env vars
 
 # Switch to non-root user
 USER www
@@ -82,4 +83,5 @@ EXPOSE 80
 USER root
 
 # Start supervisor
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
