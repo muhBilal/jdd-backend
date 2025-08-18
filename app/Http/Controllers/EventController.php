@@ -13,7 +13,6 @@ class EventController extends Controller
     public function index(Request $request)
     {
         try {
-            // Add request validation for this query
             $validator = Validator::make($request->all(), [
                 'limit' => 'integer|min:1',
                 'page' => 'integer|min:1',
@@ -50,6 +49,7 @@ class EventController extends Controller
             }
 
             return response()->json([
+                'status' => true,
                 'message' => 'Events retrieved successfully',
                 'data' => $eventData['data'],
                 'pagination' => [
@@ -61,6 +61,7 @@ class EventController extends Controller
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
+                'status' => false,  
                 'message' => 'Failed to retrieve events',
                 'error' => $e->getMessage()
             ], 500);

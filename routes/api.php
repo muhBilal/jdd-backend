@@ -25,4 +25,4 @@ Route::post('transaction', [PaymentController::class, 'process']);
 // Route::get('/payment/success', [PaymentController::class, 'success']);
 // Route::get('/payment/cancel', [PaymentController::class, 'cancel']);
 
-// Route::get('/mail', [PaymentController::class, 'sendPaymentSuccess']);
+Route::get('/mail', [PaymentController::class, 'sendPaymentSuccess']);
