@@ -13,6 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // Create transaction_status enum type
+        DB::statement("DROP TYPE IF EXISTS transaction_status;");
         DB::statement("CREATE TYPE transaction_status AS ENUM ('pending', 'paid', 'cancelled', 'expired')");
 
         // Drop and recreate transactions table

@@ -13,6 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // Create auth_provider enum type
+        DB::statement('DROP TYPE IF EXISTS auth_provider;');
         DB::statement("CREATE TYPE auth_provider AS ENUM ('google', 'email')");
 
         Schema::create('users', function (Blueprint $table) {

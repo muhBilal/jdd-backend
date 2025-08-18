@@ -13,6 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // Create form_datatype enum type
+        DB::statement("DROP TYPE IF EXISTS form_datatype;");
         DB::statement("CREATE TYPE form_datatype AS ENUM ('text', 'number', 'date', 'datetime', 'checkbox', 'dropdown', 'file')");
 
         Schema::create('event_forms', function (Blueprint $table) {
