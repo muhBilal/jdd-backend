@@ -14,6 +14,9 @@ Route::get('event/{id}', [EventController::class, 'show']);
 // event ticket 
 // Route::post('event/{eventId}/ticket', [EventTicketController::class, 'store']);
 Route::get('event/{eventId}/ticket', [EventTicketController::class, 'getTickets']);
+Route::get('user/tickets/{id}', [EventTicketController::class, 'getUserTickets']);
+Route::get('/tickets/qrcode/{code}', [EventTicketController::class, 'getTicketQrImage']);
+Route::post('/tickets/qrcode/check/{code}', [EventTicketController::class, 'checkTicketQrImage']);
 
 //event form
 Route::get('event/{id}/form', [EventFormController::class, 'index']);
@@ -25,4 +28,4 @@ Route::post('transaction', [PaymentController::class, 'process']);
 // Route::get('/payment/success', [PaymentController::class, 'success']);
 // Route::get('/payment/cancel', [PaymentController::class, 'cancel']);
 
-Route::get('/mail', [PaymentController::class, 'sendPaymentSuccess']);
+// Route::get('/mail', [PaymentController::class, 'sendPaymentSuccess']);
