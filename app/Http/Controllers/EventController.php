@@ -143,7 +143,7 @@ class EventController extends Controller
                     '=',
                     'event_tickets.id'
                 )
-                ->select('event_tickets.*', DB::raw('COALESCE(quota_ticket.claimed, 0) as sold'))
+                ->select('event_tickets.*', DB::raw('COALESCE(quota_ticket.claimed, 0) as sold'),  DB::raw('CAST(event_tickets.price AS INTEGER) as price'))
                 ->where('event_id', $id)
                 ->get();
 
