@@ -25,47 +25,134 @@ class PaymentController extends Controller
     public function process(Request $request)
     {
         try {
-            $payload = $request->all();
-            $eventTicket = DB::table('event_tickets')->where('id', $payload['eventTicketId'])->first();
-            $event       = DB::table('events')->where('id', $eventTicket->event_id)->first();
-            $price = $eventTicket->price * $payload['qty'] + ($eventTicket->price * $payload['qty'] * 0.07);
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+                'phone' => 'required|string|max:20',
+                'eventTicketId' => 'required|uuid|exists:event_tickets,id',
+                'tickets' => 'required|array|min:1',
+                'tickets.*.eventFormId' => 'required|uuid|exists:event_forms,id',
+                'tickets.*.value' => 'required|string',
+                'qty' => 'required|integer|min:1'
+            ]);
+
+            DB::beginTransaction();
+
+            $eventTicket = DB::table('event_tickets')->where('id', $validated['eventTicketId'])->first();
+            if (!$eventTicket) {
+                return response()->json(['message' => 'Invalid eventTicketId.'], 404);
+            }
+
+            $event = DB::table('events')->where('id', $eventTicket->event_id)->first();
+            if (!$event) {
+                return response()->json(['message' => 'Invalid event ID.'], 404);
+            }
+
+            $user = DB::table('users')->where('email', $validated['email'])->first();
+            if (!$user) {
+                $userId = Str::uuid()->toString();
+                DB::table('users')->insert([
+                    'id' => $userId,
+                    'email' => $validated['email'],
+                    'password_hash' => Hash::make('password'),
+                    'full_name' => $validated['name'],
+                    'auth_provider' => 'email'
+                ]);
+                $user = DB::table('users')->where('id', $userId)->first();
+            }
+
+            $insertedTicketIds = [];
+            $price = $eventTicket->price * $validated['qty'] + ($eventTicket->price * $validated['qty'] * 0.07);
             $transactionId = Str::uuid()->toString();
+
+            DB::table('transactions')->insert([
+                'id'       => $transactionId,
+                'event_id' => $event->id,
+                'user_id'  => $user->id,
+                'amount' => $price,
+                'payment_url' => null,
+                'payment_reference' => null,
+                'payment_expired_at' => null,
+                'status' => 'pending'
+            ]);
+
+            for ($i = 0; $i < $validated['qty']; $i++) {
+                $ticketId = Str::uuid()->toString();
+                DB::table('tickets')->insert([
+                    'id' => $ticketId,
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'code' => Str::random(10),
+                    'event_ticket_id' => $validated['eventTicketId'],
+                ]);
+                DB::table('ticket_users')->insert([
+                    'ticket_id' => $ticketId,
+                    'user_id'   => $user->id,
+                ]);
+                foreach ($validated['tickets'] as $t) {
+                    DB::table('event_form_tickets')->insert([
+                        'event_form_id' => $t['eventFormId'],
+                        'ticket_id'     => $ticketId,
+                        'value'         => $t['value'],
+                    ]);
+                }
+                $insertedTicketIds[] = $ticketId;
+                DB::table('transaction_tickets')->insert([
+                    'transaction_id' => $transactionId,
+                    'ticket_id'      => $ticketId,
+                    'quantity'       => 1,
+                    'price_at_purchase' => $eventTicket->price,
+                ]);
+            }
+
+            DB::table('event_tickets')
+                ->where('id', $validated['eventTicketId'])
+                ->decrement('quota', $validated['qty']);
+
+            DB::commit();
 
             $payment = $this->ipaymu->createDirectPayment(
                 $price,
-                $payload['name'],
-                $payload['phone'],
-                $payload['email'],
+                $validated['name'],
+                $validated['phone'],
+                $validated['email'],
                 $transactionId
             );
 
-            $data = $payment['Data'] ?? [];
-            ProcessTicketTransaction::dispatch($payload, $this->ipaymu);
+            if ($payment['Status'] !== 200) {
+                DB::table('transactions')->where('id', $transactionId)->update([
+                    'status' => 'payment_failed'
+                ]);
+
+                return response()->json([
+                    'message' => 'Payment failed',
+                    'error'   => $payment['Message']
+                ], 500);
+            }
+
+            $data = $payment['Data'];
+            DB::table('transactions')->where('id', $transactionId)->update([
+                'payment_url' => $data['QrImage'],
+                'payment_reference' => $data['ReferenceId'],
+                'payment_expired_at' => $data['Expired'],
+                'status' => 'pending'
+            ]);
 
             return response()->json([
-                'status'  => true,
-                'message' => 'Transaction queued for processing',
-                'data'    => [
-                    'transaction' => [
-                        'id'                => $transactionId,
-                        'event_id'          => $event->id,
-                        'amount'            => $price,
-                        'payment_url'       => $data['QrImage'] ?? null,
-                        'payment_reference' => $data['ReferenceId'] ?? null,
-                        'payment_expired_at' => $data['Expired'] ?? null,
-                    ],
-                    'payment' => $payment,
-                    'request' => $payload
-                ]
-            ], 202);
+                'message' => 'Transaction processed successfully',
+                'transaction_id' => $transactionId,
+                'ticket_ids' => $insertedTicketIds,
+                'payment' => $payment
+            ], 201);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
-                'status' => false,
                 'message' => 'Transaction failed',
                 'error'   => $e->getMessage()
             ], 500);
         }
     }
+
 
 
     public function notify(Request $request)
